@@ -91,14 +91,14 @@ def find_centroids(adata, use_rep, obs_col="louvain"):
     if use_rep == "X":
         adata.uns["{}_centroids".format(use_rep)] = np.array(
             [
-                np.mean(adata.X[adata.obs[obs_col] == clu, :], axis=0)
+                np.mean(adata.X[adata.obs[obs_col].astype(str) == clu, :], axis=0)
                 for clu in clu_names
             ]
         )
     else:
         adata.uns["{}_centroids".format(use_rep)] = np.array(
             [
-                np.mean(adata.obsm[use_rep][adata.obs[obs_col] == clu, :], axis=0)
+                np.mean(adata.obsm[use_rep][adata.obs[obs_col].astype(str) == clu, :], axis=0)
                 for clu in clu_names
             ]
         )
@@ -213,7 +213,7 @@ class DR_plot:
                 plotter[:, 1],
                 s=pt_size,
                 alpha=0.7,
-                c=[cdict[x] for x in adata.obs[obs_col]],
+                c=[cdict[x] for x in adata.obs[obs_col].astype(str)],
                 edgecolor="none",
             )
 
@@ -235,7 +235,7 @@ class DR_plot:
                 alpha=0.7,
                 c=[
                     cdict[x]
-                    for x in adata.obs.loc[adata.obs[obs_col].isin(IDs), obs_col]
+                    for x in adata.obs.loc[adata.obs[obs_col].isin(IDs), obs_col].astype(str)
                 ],
                 edgecolor="none",
             )
@@ -371,7 +371,7 @@ def distance_stats(pre, post, downsample=False, verbose=True):
         else:
             post = post.flatten()
 
-    # if dataset is large, randomly downsample to reasonable number of cells for calculation
+    # if dataset is large, randomly downsample to reasonable number of distances for calculation
     if downsample:
         assert downsample < len(
             pre
@@ -642,7 +642,7 @@ class SP_plot:
             color=self.palette[2],
         )
         if legend:
-            plt.legend(loc="best", fontsize="xx-large")
+            plt.legend(loc="lower right", fontsize="xx-large")
         else:
             plt.legend()
             self.ax.legend().remove()

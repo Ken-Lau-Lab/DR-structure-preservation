@@ -13,6 +13,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scanpy as sc
 from pydpc import Cluster
 from scipy.spatial.distance import cdist, pdist
 from sklearn.decomposition import PCA
@@ -36,9 +37,9 @@ except ImportError:
 
 # DCA
 try:
-    import scanpy
+    import dca
 except ImportError:
-    print("Scanpy module not detected. DCA Functionality will be disabled.")
+    print("DCA module not detected. Functionality will be disabled.")
 
 # FIt-SNE
 if os.path.isdir("../FIt-SNE"):
@@ -1156,13 +1157,13 @@ class fcc_DCA(DR):
         DR.__init__(self, matrix=matrix, barcodes=barcodes)  # inherits from DR object
         self.name = "DCA"
         self.DCA_norm = norm  # store normalization decision as metadata
-        self.adata = scanpy.AnnData(
+        self.adata = sc.AnnData(
             matrix
         )  # generate AnnData object (https://github.com/theislab/scanpy) for passing to DCA
-        scanpy.pp.filter_genes(
+        sc.pp.filter_genes(
             self.adata, min_counts=1
         )  # remove features with 0 counts for all cells
-        scanpy.api.pp.dca(
+        dca.api.dca(
             self.adata,
             mode=mode,
             threads=n_threads,
@@ -1172,10 +1173,10 @@ class fcc_DCA(DR):
         )  # perform DCA analysis on AnnData object
 
         if self.DCA_norm:
-            scanpy.pp.normalize_per_cell(
+            sc.pp.normalize_per_cell(
                 self.adata
             )  # normalize features for each cell with scanpy's method
-            scanpy.pp.log1p(self.adata)  # log-transform data with scanpy's method
+            sc.pp.log1p(self.adata)  # log-transform data with scanpy's method
 
         if mode == "latent":
             self.results = self.adata.obsm["X_dca"]  # return latent space as np.ndarray
