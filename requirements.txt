@@ -22,11 +22,14 @@ ipywidgets==7.5.1
 jedi==0.15.1
 Jinja2==2.10.3
 joblib==0.14.0
+json5==0.8.5
 jsonschema==3.2.0
 jupyter==1.0.0
 jupyter-client==5.3.4
 jupyter-console==6.0.0
 jupyter-core==4.6.1
+jupyterlab==1.2.3
+jupyterlab-server==1.0.6
 Keras==2.3.1
 Keras-Applications==1.0.8
 Keras-Preprocessing==1.1.0
@@ -34,6 +37,7 @@ kiwisolver==1.1.0
 kopt==0.1.0
 llvmlite==0.30.0
 loompy==3.0.6
+louvain==0.6.1
 MarkupSafe==1.1.1
 matplotlib==3.0.3
 mistune==0.8.4
@@ -62,6 +66,7 @@ pymongo==3.9.0
 pyparsing==2.4.5
 pyrsistent==0.15.6
 python-dateutil==2.8.1
+python-igraph==0.7.1.post6
 pytz==2019.3
 PyYAML==5.1.2
 pyzmq==18.1.1
