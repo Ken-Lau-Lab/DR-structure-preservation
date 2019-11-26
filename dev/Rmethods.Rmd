@@ -17,7 +17,7 @@ Both datasets have been __preprocessed and feature-selected__ to allow for direc
 ```{r}
 setwd('../../scrna2019/') # insert relative path to GLM-PCA directory
 source('algs/glmpca.R')
-setwd('../furry-couscous/')
+setwd('../')
 source('fcc_utils.r')
 library(zinbwave, quietly = T)
 library(scRNAseq, quietly = T)

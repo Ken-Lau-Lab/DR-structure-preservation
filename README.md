@@ -6,14 +6,11 @@ High-dimensional data is integral to modern systems biology. Computational metho
 
 ---
 #### Contents
-##### `fcc_utils.py` & `fcc_utils.r`:
-Contain utility functions for manipulating datasets and comparing feature-reduced latent spaces.  
-
-##### `fcc_DRs.py`:
-Defines python classes for manipulation, processing, and visualization of scRNA-seq counts data and dimensionality reduction objects.  
+##### `fcc_utils.py`:
+Contain utility functions for manipulating datasets and comparing feature-reduced latent spaces.   
 
 ##### Tutorials:
-Consult `DR_classes_tutorial.ipynb` and `distance_preservation_tutorial.ipynb` for info on how to create and manipulate _RNA_counts_ and _DR_ objects, and perform global and local structure preservation analysis on low-dimensional embeddings of your own datasets.  
+Consult `distance_preservation_tutorial.ipynb` for info on how to perform global and local structure preservation analyses on low-dimensional embeddings of your own datasets.  
 
 ---
 #### Required Python Dependencies

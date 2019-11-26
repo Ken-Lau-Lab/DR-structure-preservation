@@ -39,7 +39,7 @@ dev.off()
 
 ######################################################################################################################################################
 # discrete data - GEO accession # GSM1626793
-retina <- data.frame(t(read.csv('../inputs/GSM1626793_P14Retina_1.processed.norowlabels.tsv', sep='\t', header = T, check.names = F))) %>%
+retina <- data.frame(t(read.csv('../inputs/GSM1626793_P14Retina_1.processed.tsv', sep='\t', header = T, check.names = F))) %>%
   rownames_to_column(var='gene') %>%
   separate(gene, into = c('chr','pos','gene'), sep = ':', remove=T)
 rownames(retina) <- make.names(retina$gene, unique = T)
