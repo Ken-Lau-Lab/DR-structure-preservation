@@ -53,10 +53,10 @@ def knn_graph(dist_matrix, k, adata, save_rep="knn"):
         save_rep = name of .uns key to save knn graph to within adata (default adata.uns['knn'])
     """
     adata.uns[save_rep] = {
-        'graph':kneighbors_graph(
+        "graph": kneighbors_graph(
             dist_matrix, k, mode="connectivity", include_self=False, n_jobs=-1
         ).toarray(),
-        'k':k
+        "k": k,
     }
 
 
@@ -101,7 +101,10 @@ def find_centroids(adata, use_rep, obs_col="louvain"):
     else:
         adata.uns["{}_centroids".format(use_rep)] = np.array(
             [
-                np.mean(adata.obsm[use_rep][adata.obs[obs_col].astype(str) == clu, :], axis=0)
+                np.mean(
+                    adata.obsm[use_rep][adata.obs[obs_col].astype(str) == clu, :],
+                    axis=0,
+                )
                 for clu in clu_names
             ]
         )
@@ -238,7 +241,9 @@ class DR_plot:
                 alpha=0.7,
                 c=[
                     cdict[x]
-                    for x in adata.obs.loc[adata.obs[obs_col].isin(IDs), obs_col].astype(str)
+                    for x in adata.obs.loc[
+                        adata.obs[obs_col].isin(IDs), obs_col
+                    ].astype(str)
                 ],
                 edgecolor="none",
             )
@@ -351,9 +356,7 @@ def distance_stats(pre, post, downsample=False, verbose=True):
     # if distance matrix (mA x mB, result of cdist), flatten to unique cell-cell distances
     if pre.ndim == 2:
         if verbose:
-            print(
-                "Flattening pre-transformation distance matrix into 1D array..."
-            )
+            print("Flattening pre-transformation distance matrix into 1D array...")
         # if symmetric, only keep unique values (above diagonal)
         if np.allclose(pre, pre.T, rtol=1e-05, atol=1e-08):
             pre = pre[np.triu_indices(n=pre.shape[0], k=1)]
@@ -364,9 +367,7 @@ def distance_stats(pre, post, downsample=False, verbose=True):
     # if distance matrix (mA x mB, result of cdist), flatten to unique cell-cell distances
     if post.ndim == 2:
         if verbose:
-            print(
-                "Flattening post-transformation distance matrix into 1D array..."
-            )
+            print("Flattening post-transformation distance matrix into 1D array...")
         # if symmetric, only keep unique values (above diagonal)
         if np.allclose(post, post.T, rtol=1e-05, atol=1e-08):
             post = post[np.triu_indices(n=post.shape[0], k=1)]
@@ -427,7 +428,11 @@ def knn_preservation(pre, post):
     ), 'Matrices contain different number of cells.\n{} in "pre"\n{} in "post"\n'.format(
         pre.shape[0], post.shape[0]
     )
-    return np.round((np.isclose(pre, post, rtol=1e-05, atol=1e-08).sum() / (pre.shape[0] ** 2)) * 100, 4)
+    return np.round(
+        (np.isclose(pre, post, rtol=1e-05, atol=1e-08).sum() / (pre.shape[0] ** 2))
+        * 100,
+        4,
+    )
 
 
 def structure_preservation_sc(
