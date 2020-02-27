@@ -1,0 +1,48 @@
+---
+title: "splat_sim"
+author: "Cody Heiser"
+date: "2/26/2020"
+output: html_document
+---
+C. Heiser, 2020
+
+__The purpose of this notebook is to perform single-cell data simulations for testing with dimensionality reduction structural preservation framework.__
+
+We are using the [Splatter](https://github.com/Oshlack/splatter) framework to simulate scRNA-seq datasets with discrete and continuous global structures.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Importing packages
+
+```{r}
+library(splatter)
+```
+
+## Building parameters for simulating dataset
+
+```{r}
+params.path <- newSplatParams(nGenes=500, batchCells=3060, lib.loc=9, lib.scale=0.05, path.nSteps=1000, group.prob=c(0.3333333,0.3333333,0.3333334), path.from=c(0,0,0), de.prob=0.5)#, lib.loc=8, lib.scale=0.2)
+sim.paths <- splatSimulatePaths(params.path)
+normalize(sim.paths) -> sim.paths
+```
+
+```{r}
+plotPCA(sim.paths, colour_by="Step")
+```
+
+```{r}
+plotPCA(sim.paths, colour_by="Group")
+```
+
+```{r}
+counts(sim.paths)[1:10,1:10]
+```
+
+```{r}
+setwd("~/git/DR-structure-preservation")
+write.csv(counts(sim.paths), file = "inputs/sim_path.csv")
+write.csv(colData(sim.paths), file = "inputs/sim_path_obs.csv")
+```
+
