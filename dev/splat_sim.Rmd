@@ -28,7 +28,7 @@ sim.paths <- splatSimulatePaths(params.path)
 ```
 
 ```{r}
-normalize(sim.paths) -> sim.paths
+scater::normalizeSCE(sim.paths) -> sim.paths
 plotPCA(sim.paths, colour_by="Step")
 ```
 
@@ -42,107 +42,117 @@ counts(sim.paths)[1:10,1:10]
 
 ```{r}
 setwd("~/git/DR-structure-preservation")
+# save continuous dataset
 write.csv(counts(sim.paths), file = "inputs/sim_path.csv")
 write.csv(colData(sim.paths), file = "inputs/sim_path_obs.csv")
+# remove steps lower than 400 and save as "discrete" dataset
+sim.paths[,which(colData(sim.paths)$Step>=400)] -> sim.discrete
+write.csv(counts(sim.discrete), file = "inputs/sim_discrete.csv")
+write.csv(colData(sim.discrete), file = "inputs/sim_discrete_obs.csv")
 ```
 
 ## Now apply dimension reduction methods to simulation
 ```{r}
-setwd('~/git/scrna2019/') # insert relative path to GLM-PCA directory
-source('algs/glmpca.R')
+source('~/git/scrna2019/algs/glmpca.R')
 setwd('~/git/DR-structure-preservation/dev/')
 source('fcc_utils.r')
 library(zinbwave, quietly = T)
 #library(scRNAseq, quietly = T)
-#library(SIMLR, quietly = T)
+library(SIMLR, quietly = T)
 ```
 
 ***
 ### ZINB-WaVE
 From [Risso, _et al._ (2018)](https://www.nature.com/articles/s41467-017-02554-5), ZINB-WaVE is a zero-inflated negative binomial model for low-dimensional representations of scRNA-seq counts data. Available on [Bioconductor](https://bioconductor.org/packages/release/bioc/html/zinbwave.html).
 
-Create SummarizedExperiment object from counts data, then perform ZINB-WaVE.
+Perform ZINB-WaVE on continuous paths data.
 ```{r}
-# transpose matrix to genes x cells format
-#sim_expt <- SummarizedExperiment(assays = list(counts=data.matrix(t(colon))))
-sim.paths.select <- sim.paths[rowSums(counts(sim.paths))>0,]
 # perform ZINB-WAVE analysis
-colon_zinbwave <- zinbwave(sim.paths.select, K=2, epsilon=1000, verbose=T)
+path_zinbwave <- zinbwave(sim.paths, K=2, epsilon=1000, verbose=T)
+plot.DR(data.frame(reducedDim(path_zinbwave)), colorby = sim.paths$Step, name = 'ZINB-WAVE')
 ```
 
-Plot resulting 2D embedding:
+Perform ZINB-WaVE on discrete paths data.
 ```{r}
-plot.DR(data.frame(reducedDim(colon_zinbwave)), colorby = sim.paths$Step, name = 'ZINB-WAVE')
+discrete_zinbwave <- zinbwave(sim.discrete, K=2, epsilon=1000, verbose=T)
+plot.DR(data.frame(reducedDim(discrete_zinbwave)), colorby = sim.discrete$Step, name = 'ZINB-WAVE')
 ```
 
 Output ZINB-WaVE results to .csv files
 ```{r}
-write.csv(data.frame(colon_zinbwave@reducedDims$zinbwave), file = 'outputs/colon_ZINB-WAVE.csv', row.names = F)
+write.csv(data.frame(path_zinbwave@reducedDims$zinbwave), file = 'outputs/sim_path_ZINB-WAVE.csv', row.names = F)
+write.csv(data.frame(discrete_zinbwave@reducedDims$zinbwave), file = 'outputs/sim_discrete_ZINB-WAVE.csv', row.names = F)
 ```
 
 ***
 ### GLM-PCA
 From [Townes, _et al._ (2019)](https://www.biorxiv.org/content/10.1101/574574v1), GLM-PCA is a generalized linear model-based PCA for dimensionality reduction of scRNA-seq counts data. Available on [GitHub](https://github.com/willtownes/scrna2019).
 
-Let's start with colon dataset again
+Let's start with continuous paths dataset again
 ```{r}
 # perform GLM-PCA analysis
-colon_glmpca <- glmpca(Y=counts(sim.paths.select), L=2, verbose=T)
+path_glmpca <- glmpca(Y=counts(sim.paths), L=2, verbose=T)
 # plot results
-plot.DR(colon_glmpca$factors, colorby = sim.paths$Step, name='GLM-PCA')
+plot.DR(path_glmpca$factors, colorby = sim.paths$Step, name='GLM-PCA')
+```
+
+Let's next do GLM-PCA on the discrete paths.
+```{r}
+# perform GLM-PCA analysis
+discrete_glmpca <- glmpca(Y=counts(sim.discrete), L=2, verbose=T)
+# plot results
+plot.DR(discrete_glmpca$factors, colorby = sim.discrete$Step, name='GLM-PCA')
 ```
 
 Output GLM-PCA results to .csv files
 ```{r}
-write.csv(colon_glmpca$factors, file = 'outputs/colon_GLM-PCA.csv', row.names = F) # colon data
+write.csv(path_glmpca$factors, file = 'outputs/sim_path_GLM-PCA.csv', row.names = F) # continuous data
+write.csv(discrete_glmpca$factors, file = 'outputs/sim_discrete_GLM-PCA.csv', row.names = F) # discrete data
 ```
 
 ***
 ### SIMLR
 From [Wang, _et al._ (2017)](https://www.ncbi.nlm.nih.gov/pubmed/28263960), SIMLR is a multikernel learning approach to dimensionality reduction, clustering, and visualization of scRNA-seq counts data. Available on [Bioconductor](https://bioconductor.org/packages/release/bioc/html/SIMLR.html).
 
-First on the colon data.
+First on the continuous data.
 We can normalize our counts data and feed it into the SIMLR algorithm with the expected number of clusters from Seurat.
 ```{r}
-colon_norm <- arcsinh.norm(colon, margin=1) # normalize by arcsinh-tranforming fractional counts per gene
+paths_norm <- arcsinh.norm(counts(sim.paths), margin=2) # normalize by arcsinh-tranforming fractional counts per gene
 
-# perform SIMLR analysis with the estimated number of clusters from prior analysis of data
-colon_SIMLR <- SIMLR(t(colon_norm), c = 6, no.dim = 2, normalize = F)
+SIMLR_Estimate_Number_of_Clusters(paths_norm, NUMC=2:5)
 ```
 
 ```{r}
+# perform SIMLR analysis with the estimated number of clusters from prior analysis of data
+path_SIMLR <- SIMLR(paths_norm, c = 4, no.dim = 2, normalize = F)
 # plot results
-plot.DR(data.frame(colon_SIMLR$ydata), colorby = colon.clu$V1, name='SIMLR')
+plot.DR(data.frame(path_SIMLR$ydata), colorby = sim.paths$Step, name='SIMLR')
 ```
 
 ```{r}
 # plot results colored by SIMLR's clusters
-plot.DR(data.frame(colon_SIMLR$ydata), colorby = colon_SIMLR$y$cluster, name='SIMLR')
+plot.DR(data.frame(path_SIMLR$ydata), colorby = path_SIMLR$y$cluster, name='SIMLR')
 ```
 
-Perform same workflow on retina data
+Now perform the same analysis on the discrete paths data.
 ```{r}
-retina_norm <- arcsinh.norm(retina, margin=1) # normalize by arcsinh-tranforming fractional counts per gene
+discrete_norm <- arcsinh.norm(counts(sim.discrete), margin=2) # normalize by arcsinh-tranforming fractional counts per gene
 
+SIMLR_Estimate_Number_of_Clusters(discrete_norm, NUMC=2:5)
+```
+
+```{r}
 # perform SIMLR analysis with the estimated number of clusters from prior analysis of data
-retina_SIMLR <- SIMLR(t(retina_norm), c = 9, no.dim = 2, normalize = F)
-```
-
-```{r}
+discrete_SIMLR <- SIMLR(discrete_norm, c = 3, no.dim = 2, normalize = F)
 # plot results
-plot.DR(data.frame(retina_SIMLR$ydata), colorby = retina.clu$V1, name='SIMLR')
-```
-
-```{r}
-# plot results colored by SIMLR's clusters
-plot.DR(data.frame(retina_SIMLR$ydata), colorby = retina_SIMLR$y$cluster, name='SIMLR')
+plot.DR(data.frame(discrete_SIMLR$ydata), colorby = sim.discrete$Step, name='SIMLR')
 ```
 
 Finally write outputs for 10-D latent space and 2D projections from SIMLR
 ```{r}
-write.csv(colon_SIMLR$F, file = 'outputs/colon_SIMLR_F.csv', row.names = F)
-write.csv(colon_SIMLR$ydata, file = 'outputs/colon_SIMLR_ydata.csv', row.names = F)
+write.csv(path_SIMLR$F, file = 'outputs/sim_path_SIMLR_F.csv', row.names = F)
+write.csv(path_SIMLR$ydata, file = 'outputs/sim_path_SIMLR_ydata.csv', row.names = F)
 
-write.csv(retina_SIMLR$F, file = 'outputs/retina_SIMLR_F.csv', row.names = F)
-write.csv(retina_SIMLR$ydata, file = 'outputs/retina_SIMLR_ydata.csv', row.names = F)
+write.csv(discrete_SIMLR$F, file = 'outputs/sim_discrete_SIMLR_F.csv', row.names = F)
+write.csv(discrete_SIMLR$ydata, file = 'outputs/sim_discrete_SIMLR_ydata.csv', row.names = F)
 ```

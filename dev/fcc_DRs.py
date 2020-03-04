@@ -42,10 +42,10 @@ except ImportError:
     print("DCA module not detected. Functionality will be disabled.")
 
 # FIt-SNE
-if os.path.isdir("../FIt-SNE"):
+if os.path.isdir("../../FIt-SNE"):
     import sys
 
-    sys.path.append("../FIt-SNE")  # ensure path to FIt-SNE repo is correct!
+    sys.path.append("../../FIt-SNE")  # ensure path to FIt-SNE repo is correct!
     from fast_tsne import fast_tsne  # FIt-SNE
 else:
     print("FIt-SNE repository not detected. Functionality will be disabled.")
