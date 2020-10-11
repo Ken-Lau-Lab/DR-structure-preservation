@@ -211,17 +211,21 @@ class DR_plot:
             save_to = path to .png file to save output, or None
         """
         plotter = adata.obsm[use_rep]
+        clu_names = adata.obs[obs_col].unique().astype(str)
 
-        # use existing scanpy colors if applicable
+        # use existing scanpy colors, if applicable
         if obs_col == "leiden":
-            colors = adata.uns["leiden_colors"]
-            clu_names = [str(x) for x in range(adata.obs.leiden.astype(int).max() + 1)]
+            colors = [
+                adata.uns["leiden_colors"][x]
+                for x in adata.obs.leiden.unique().astype(int)
+            ]
         elif obs_col == "louvain":
-            colors = adata.uns["louvain_colors"]
-            clu_names = [str(x) for x in range(adata.obs.louvain.astype(int).max() + 1)]
-        # otherwise, get color mapping from obs_col
+            colors = [
+                adata.uns["louvain_colors"][x]
+                for x in adata.obs.leiden.unique().astype(int)
+            ]
+        # otherwise, get new color mapping from obs_col using self.cmap
         else:
-            clu_names = adata.obs[obs_col].unique().astype(str)
             colors = self.cmap(np.linspace(0, 1, len(clu_names)))
 
         cdict = dict(zip(clu_names, colors))
@@ -291,16 +295,20 @@ class DR_plot:
                 but not in 'X_umap_centroids'. highlight the edges to show this.
             save_to = path to .png file to save output, or None
         """
+        clu_names = adata.obs[obs_col].unique().astype(str)
         # use existing scanpy colors, if applicable
         if obs_col == "leiden":
-            colors = adata.uns["leiden_colors"]
-            clu_names = [str(x) for x in range(adata.obs.leiden.astype(int).max() + 1)]
+            colors = [
+                adata.uns["leiden_colors"][x]
+                for x in adata.obs.leiden.unique().astype(int)
+            ]
         elif obs_col == "louvain":
-            colors = adata.uns["louvain_colors"]
-            clu_names = [str(x) for x in range(adata.obs.louvain.astype(int).max() + 1)]
+            colors = [
+                adata.uns["louvain_colors"][x]
+                for x in adata.obs.leiden.unique().astype(int)
+            ]
         # otherwise, get new color mapping from obs_col using self.cmap
         else:
-            clu_names = adata.obs[obs_col].unique().astype(str)
             colors = self.cmap(np.linspace(0, 1, len(clu_names)))
 
         # draw points in embedding first
