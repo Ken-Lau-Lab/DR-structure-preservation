@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-utility functions
-
-@author: C Heiser
-October 2019
+Utility functions for dimensionality reduction structural preservation analysis
 """
 import warnings
 
@@ -24,18 +21,28 @@ sc.set_figure_params(dpi=90, color_map="viridis")
 sns.set(style="white")
 
 
-# scanpy utility functions #
 def arcsinh(adata, layer=None, norm="l1", scale=1000):
     """
-    return arcsinh-normalized values for each element in anndata counts matrix
-    l1 normalization (sc.pp.normalize_total) should be performed before this transformation
-        adata = AnnData object
-        layer = name of lauer to perform arcsinh-normalization on. if None, use AnnData.X
-        norm = normalization strategy prior to Log2 transform.
-            None: do not normalize data
-            'l1': divide each count by sum of counts for each cell
-            'l2': divide each count by sqrt of sum of squares of counts for cell
-        scale = factor to scale normalized counts to; default 1000
+    Returns arcsinh-normalized values for each element in anndata counts matrix
+
+    Parameters
+    ----------
+
+    adata : anndata.AnnData
+        AnnData object
+    layer : str, optional (default=None)
+        name of layer to perform arcsinh-normalization on. if None, use `adata.X`
+    norm : str {"l1","l2"}, optional (default="l1")
+        normalization strategy prior to arcsinh transform. None=do not normalize data. 
+        "l1"=divide each count by sum of counts for each cell. "l2"=divide each count 
+        by sqrt of sum of squares of counts for cell.
+    scale : float, optional (default=1000)
+        factor to multiply normalized counts by
+
+    Returns
+    -------
+
+    `adata` is edited in place to add `adata.layers["arcsinh_norm"]`
     """
     if layer is None:
         mat = adata.X
@@ -47,11 +54,24 @@ def arcsinh(adata, layer=None, norm="l1", scale=1000):
 
 def knn_graph(dist_matrix, k, adata, save_rep="knn"):
     """
-    build simple binary k-nearest neighbor graph and add to anndata object
-        dist_matrix = distance matrix to calculate knn graph for (i.e. pdist(adata.obsm['X_pca']))
-        k = number of nearest neighbors to determine
-        adata = AnnData object to add resulting graph to (in .uns slot)
-        save_rep = name of .uns key to save knn graph to within adata (default adata.uns['knn'])
+    Builds simple binary k-nearest neighbor graph and add to anndata object
+
+    Parameters
+    ----------
+
+    dist_matrix : np.array
+        distance matrix to calculate knn graph for (i.e. `pdist(adata.obsm["X_pca"])`)
+    k : int
+        number of nearest neighbors to determine
+    adata : anndata.AnnData
+        AnnData object to add resulting graph to (in `.uns` slot)
+    save_rep : str, optional (default="knn")
+        name of `.uns` key to save knn graph to within adata
+
+    Returns
+    -------
+
+    `adata` is edited in place, adding knn graph to `adata.uns[save_rep]`
     """
     adata.uns[save_rep] = {
         "graph": kneighbors_graph(
@@ -63,12 +83,26 @@ def knn_graph(dist_matrix, k, adata, save_rep="knn"):
 
 def subset_uns_by_ID(adata, uns_keys, obs_col, IDs):
     """
-    subset symmetrical distance matrices and knn graphs in adata.uns by one or more IDs defined in adata.obs
-        adata = AnnData object
-        uns_keys = list of keys in adata.uns to subset. new adata.uns keys will be saved with ID appended to name
-            (i.e. adata.uns['knn'] -> adata.uns['knn_ID1'])
-        obs_col = name of column in adata.obs to use as cell IDs (i.e. 'louvain')
-        IDs = list of IDs to include in subset
+    Subsets symmetrical distance matrices and knn graphs in `adata.uns` by one or more 
+    IDs defined in `adata.obs`
+
+    Parameters
+    ----------
+
+    adata : anndata.AnnData
+        AnnData object
+    uns_keys : list of str
+        list of keys in `adata.uns` to subset. new `adata.uns` keys will be saved with 
+        ID appended to name (i.e. `adata.uns["knn"]` -> `adata.uns["knn_ID1"]`)
+    obs_col : str
+        name of column in `adata.obs` to use as cell IDs (i.e. "louvain")
+    IDs : list of str
+        list of IDs to include in subset
+
+    Returns
+    -------
+
+    `adata` is edited in place, adding new `.uns` keys for each ID
     """
     for key in uns_keys:
         tmp = adata.uns[key][
@@ -85,10 +119,26 @@ def subset_uns_by_ID(adata, uns_keys, obs_col, IDs):
 
 def find_centroids(adata, use_rep, obs_col="louvain"):
     """
-    find cluster centroids
-        adata = AnnData object
-        use_rep = 'X' or adata.obsm key containing space to calculate centroids in (i.e. 'X_pca')
-        obs_col = adata.obs column name containing cluster IDs
+    Finds cluster centroids
+
+    Parameters
+    ----------
+
+    adata : anndata.AnnData
+        AnnData object
+    use_rep : str
+        "X" or `adata.obsm` key containing space to calculate centroids in 
+        (i.e. "X_pca")
+    obs_col "str, optional (default="louvain")
+        `adata.obs` column name containing cluster IDs
+
+    Returns
+    -------
+
+    `adata` is edited in place, adding `adata.uns["{}_centroids"]`, 
+    `adata.uns["{}_centroid_distances"]`, and `adata.uns["{}_centroid_MST"]` 
+    containing centroid coordinates, distance matrix between all centoids, and a 
+    minimum spanning tree graph between the centroids, respectively
     """
     # calculate centroids
     clu_names = adata.obs[obs_col].unique().astype(str)
@@ -123,17 +173,50 @@ def find_centroids(adata, use_rep, obs_col="louvain"):
 # dimensionality reduction plotting class #
 class DR_plot:
     """
-    class defining pretty plots of dimension-reduced embeddings such as PCA, t-SNE, and UMAP
-        DR_plot().plot(): utility plotting function that can be passed any numpy array in the `data` parameter
-                 .plot_IDs(): plot one or more cluster IDs on top of an .obsm from an `AnnData` object
-                 .plot_centroids(): plot cluster centroids defined using find_centroids() function on `AnnData` object
+    Class defining pretty plots of dimension-reduced embeddings such as PCA, t-SNE, 
+    and UMAP
+
+    Attributes
+    ----------
+
+    .fig : matplotlib.figure
+        the figure object on which data will be plotted
+    .ax : matplotlib.axes.ax
+        the axes within `self.fig`
+    .cmap : matplotlib.pyplot.cmap
+        color map to use for plotting; default="plasma"
+
+    Methods
+    -------
+
+    .plot()
+        utility plotting function that can be passed any numpy array in the `data` 
+        parameter
+    .plot_IDs()
+        plots one or more cluster IDs on top of an `.obsm` from an AnnData object
+    .plot_centroids()
+        plots cluster centroids defined using `find_centroids()` function on AnnData 
+        object
     """
 
     def __init__(self, dim_name="dim", figsize=(5, 5), ax_labels=True):
         """
-        dim_name = how to label axes ('dim 1' on x and 'dim 2' on y by default)
-        figsize = size of resulting axes
-        ax_labels = draw arrows and dimension names in lower left corner of plot
+        Initializes `DR_plot` class
+
+        Parameters
+        ----------
+
+        dim_name : str, optional (default="dim")
+            how to label axes ("dim 1" on x and "dim 2" on y by default)
+        figsize : tuple of float, optional (default=(5,5))
+            size of resulting figure in inches
+        ax_labels : bool, optional (default=True)
+            draw arrows and dimension names in lower left corner of plot
+
+        Returns
+        -------
+
+        Initializes `self.fig` and `self.ax` according to input specs
         """
         self.fig, self.ax = plt.subplots(1, figsize=figsize)
         self.cmap = plt.get_cmap("plasma")
@@ -167,12 +250,29 @@ class DR_plot:
 
     def plot(self, data, color, pt_size=75, legend=None, save_to=None):
         """
-        general plotting function for dimensionality reduction outputs with cute arrows and labels
-            data = np.array containing variables in columns and observations in rows
-            color = list of length nrow(data) to determine how points should be colored
-            pt_size = size of points in plot
-            legend = None, 'full', or 'brief'
-            save_to = path to .png file to save output, or None
+        General plotting function for dimensionality reduction outputs with cute 
+        arrows and labels
+
+        Parameters
+        ----------
+
+        data : np.array
+            array containing variables in columns and observations in rows
+        color : list
+            list of length `nrow(data)` to determine how points should be colored (ie. 
+            `adata.obs["louvain"].values` to color by "louvain" cluster categories)
+        pt_size : float, optional (default=75)
+            size of points in plot
+        legend : str {"full","brief"}, optional (default=None)
+            string describing the legend size. None for no legend
+        save_to : str, optional (default=None)
+            path to `.png` file to save output. do not save if None
+
+        Returns
+        -------
+
+        `self.fig`, `self.ax` edited; plot saved to `.png` file if `save_to` is not 
+        None
         """
         sns.scatterplot(
             x=data[:, 0],
@@ -202,13 +302,31 @@ class DR_plot:
         self, adata, use_rep, obs_col="leiden", IDs="all", pt_size=75, save_to=None
     ):
         """
-        general plotting function for dimensionality reduction outputs with cute arrows and labels
-            adata = anndata object to pull dimensionality reduction from
-            use_rep = adata.obsm key to plot from (i.e. 'X_pca')
-            obs_col = name of column in adata.obs to use as cell IDs (i.e. 'leiden')
-            IDs = list of IDs to plot, graying out cells not assigned to those IDS (default 'all' IDs)
-            pt_size = size of points in plot
-            save_to = path to .png file to save output, or None
+        General plotting function for dimensionality reduction outputs with 
+        categorical colors (i.e. "leiden" or "louvain") and cute arrows and labels
+
+        Parameters
+        ----------
+
+        adata : anndata.AnnData
+            object to pull dimensionality reduction from
+        use_rep : str
+            `adata.obsm` key to plot from (i.e. "X_pca")
+        obs_col : str, optional (default="leiden")
+            name of column in `adata.obs` to use as cell IDs (i.e. "leiden")
+        IDs : list of str, optional (default="all")
+            list of IDs to plot, graying out cells not assigned to those IDs. if 
+            "all", show all ID categories.
+        pt_size : float, optional (default=75)
+            size of points in plot
+        save_to : str, optional (default=None)
+            path to `.png` file to save output. do not save if None
+
+        Returns
+        -------
+
+        `self.fig`, `self.ax` edited; plot saved to `.png` file if `save_to` is not 
+        None
         """
         plotter = adata.obsm[use_rep]
         clu_names = adata.obs[obs_col].unique().astype(str)
@@ -282,18 +400,38 @@ class DR_plot:
         save_to=None,
     ):
         """
-        general plotting function for dimensionality reduction outputs with cute arrows and labels
-            adata = anndata object to pull dimensionality reduction from
-            use_rep = adata.obsm key to plot from (i.e. 'X_pca')
-            obs_col = name of column in adata.obs to use as cell IDs (i.e. 'leiden')
-            ctr_size = size of centroid points in plot
-            pt_size = size of points in plot
-            draw_edges = draw edges of minimum spanning tree between all centroids?
-            highlight_edges = list of edge IDs as tuples to highlight in red on plot
-                e.g. `set(adata.uns['X_tsne_centroid_MST'].edges).difference(set(adata.uns['X_umap_centroid_MST'].edges))`
-                with output {(0,3), (0,7)} says that edges from centroid 0 to 3 and 0 to 7 are found in 'X_tsne_centroids'
-                but not in 'X_umap_centroids'. highlight the edges to show this.
-            save_to = path to .png file to save output, or None
+        General plotting function for cluster centroid graph and MST 
+        (i.e. from "leiden" or "louvain") and cute arrows and labels
+
+        Parameters
+        ----------
+
+        adata : anndata.AnnData
+            object to pull dimensionality reduction from
+        use_rep : str
+            `adata.obsm` key to plot from (i.e. "X_pca")
+        obs_col : str, optional (default="leiden")
+            name of column in `adata.obs` to use as cell IDs (i.e. "leiden")
+        ctr_size : float, optional (default=300)
+            size of centroid points in plot
+        pt_size : float, optional (default=75)
+            size of points in plot
+        draw_edges : bool, optional (default=True)
+            draw edges of minimum spanning tree between all centroids
+        highlight_edges : list of int, optional (default=False)
+            list of edge IDs as tuples to highlight in red on plot. e.g. 
+            `set(adata.uns['X_tsne_centroid_MST'].edges).difference(set(adata.uns['X_umap_centroid_MST'].edges))`
+            with output {(0,3), (0,7)} says that edges from centroid 0 to 3 and 0 to 7 
+            are found in 'X_tsne_centroids' but not in 'X_umap_centroids'. highlight 
+            the edges to show this.
+        save_to : str, optional (default=None)
+            path to `.png` file to save output. do not save if None
+
+        Returns
+        -------
+
+        `self.fig`, `self.ax` edited; plot saved to `.png` file if `save_to` is not 
+        None
         """
         clu_names = adata.obs[obs_col].unique().astype(str)
         # use existing scanpy colors, if applicable
@@ -360,20 +498,47 @@ class DR_plot:
             plt.savefig(fname=save_to, transparent=True, bbox_inches="tight", dpi=1000)
 
 
-# structural preservation utility functions #
+
 def distance_stats(pre, post, downsample=False, verbose=True):
     """
-    test for correlation between Euclidean cell-cell distances before and after transformation by a function or DR algorithm.
+    Tests for correlation between Euclidean cell-cell distances before and after 
+    transformation by a function or DR algorithm.
+
+    Parameters
+    ----------
+
+    pre : np.array
+        vector of unique distances (pdist()) or distance matrix of shape (n_cells, 
+        m_cells), i.e. (cdist()) before transformation/projection
+    post : np.array
+        vector of unique distances (pdist()) or distance matrix of shape (n_cells, 
+        m_cells), i.e. (cdist()) after transformation/projection
+    downsample : int, optional (default=False)
+        number of distances to downsample to. maximum of 50M (~10k cells, if 
+        symmetrical) is recommended for performance.
+    verbose : bool, optional (default=True)
+        print progress statements to console
+
+    Returns
+    -------
+
+    pre : np.array
+        vector of normalized unique distances (pdist()) or distance matrix of shape 
+        (n_cells, m_cells), before transformation/projection
+    post : np.array
+        vector of normalized unique distances (pdist()) or distance matrix of shape 
+        (n_cells, m_cells), after transformation/projection
+    corr_stats : list
+        output of `pearsonr()` function correlating the two normalized unique distance 
+        vectors
+    EMD : float
+        output of `wasserstein_1d()` function calculating the Earth Mover's Distance 
+        between the two normalized unique distance vectors
+
     1) performs Pearson correlation of distance distributions
     2) normalizes unique distances using min-max standardization for each dataset
-    3) calculates Wasserstein or Earth-Mover's Distance for normalized distance distributions between datasets
-        pre = vector of unique distances (pdist()) or distance matrix of shape (n_cells, m_cells)
-            (cdist()) before transformation/projection
-        post = vector of unique distances (pdist()) distance matrix of shape (n_cells, m_cells)
-            (cdist()) after transformation/projection
-        downsample = number of distances to downsample to
-            (maximum of 50M [~10k cells, if symmetrical] is recommended for performance)
-        verbose = print progress statements
+    3) calculates Wasserstein or Earth-Mover's Distance for normalized distance 
+    distributions between datasets
     """
     # make sure the number of cells in each matrix is the same
     assert (
@@ -447,9 +612,22 @@ def distance_stats(pre, post, downsample=False, verbose=True):
 
 def knn_preservation(pre, post):
     """
-    test for k-nearest neighbor preservation (%) before and after transformation by a function or DR algorithm.
-        pre = Knn graph of shape (n_cells, n_cells) before transformation/projection
-        post = Knn graph of shape (n_cells, n_cells) after transformation/projection
+    Tests for k-nearest neighbor preservation (%) before and after transformation by a 
+    function or DR algorithm.
+
+    Parameters
+    ----------
+
+    pre : np.array
+        knn graph of shape (n_cells, n_cells) before transformation/projection
+    post : np.array
+        knn graph of shape (n_cells, n_cells) after transformation/projection
+
+    Returns
+    -------
+
+    knn_pres : float
+        knn preservation expressed as a percentage out of 100 %
     """
     # make sure the number of cells in each matrix is the same
     assert (
@@ -475,18 +653,46 @@ def structure_preservation_sc(
     force_recalc=False,
 ):
     """
-    wrapper function for full structural preservation workflow applied to scanpy AnnData object
-        adata = AnnData object with latent space to test in .obsm slot, and native (reference) space in .X or .obsm
-        latent = adata.obsm key that contains low-dimensional latent space for testing
-        native = adata.obsm key or .X containing high-dimensional native space, which should be direct input to dimension
-            reduction that generated latent .obsm for fair comparison. Default 'X', which uses adata.X.
-        metric = distance metric to use. one of ['chebyshev','cityblock','euclidean','minkowski','mahalanobis','seuclidean'].
-            default 'euclidean'.
-        k = number of nearest neighbors to test preservation
-        downsample = number of distances to downsample to
-            (maximum of 50M [~10k cells, if symmetrical] is recommended for performance)
-        verbose = print progress statements
-        force_recalc = if True, recalculate all distances and neighbor graphs, regardless of their presence in AnnData object
+    Wrapper function for full structural preservation workflow applied to `scanpy` 
+    AnnData object
+
+    Parameters
+    ----------
+
+    adata : anndata.AnnData
+        AnnData object with latent space to test in `.obsm` slot, and native 
+        (reference) space in `.X` or `.obsm`
+    latent : str
+        `adata.obsm` key that contains low-dimensional latent space for testing
+    native : str, optional (default="X")
+        `adata.obsm` key or `.X` containing high-dimensional native space, which 
+        should be direct input to dimension reduction that generated latent `.obsm` 
+        for fair comparison. default "X", which uses `adata.X`.
+    metric : str {"chebyshev","cityblock","euclidean","minkowski","mahalanobis",
+    "seuclidean"}, optional (default="euclidean")
+        distance metric to use
+    k : int, optional (default=30)
+        number of nearest neighbors to test preservation
+    downsample : int, optional (default=False)
+        number of distances to downsample to. maximum of 50M (~10k cells, if 
+        symmetrical) is recommended for performance.
+    verbose : bool, optional (default=True)
+        print progress statements to console
+    force_recalc : bool, optional (default=False)
+        if True, recalculate all distances and neighbor graphs, regardless of their 
+        presence in `adata`
+
+    Returns
+    -------
+
+    corr_stats : list
+        output of `pearsonr()` function correlating the two normalized unique distance 
+        vectors
+    EMD : float
+        output of `wasserstein_1d()` function calculating the Earth Mover's Distance 
+        between the two normalized unique distance vectors
+    knn_pres : float
+        knn preservation expressed as a percentage out of 100 %
     """
     # 0) determine native space according to argument
     if native == "X":
@@ -580,24 +786,87 @@ def structure_preservation_sc(
     return corr_stats, EMD, knn_pres
 
 
-# structure preservation plotting class #
+
 class SP_plot:
     """
-    class defining pretty plots of structural evaluation of dimension-reduced embeddings such as PCA, t-SNE, and UMAP
+    Class defining pretty plots for structural evaluation of dimension-reduced 
+    embeddings such as PCA, t-SNE, and UMAP
+
+    Attributes
+    ----------
+
+    .figsize : tuple of float
+        the size of the figure object on which data will be plotted
+    .fig : matplotlib.figure
+        the figure object on which data will be plotted
+    .ax : matplotlib.axes.ax
+        the axes within `self.fig`
+    .palette : sns.cubehelix_palette()
+        color palette to use for coloring `seaborn` plots
+    .cmap : matplotlib.pyplot.cmap
+        color map to use for plotting; default="cubehelix" from `seaborn`
+    .pre : np.array
+        flattened vector of normalized, unique cell-cell distances 
+        "pre-transformation". upper triangle of cell-cell distance matrix, flattened 
+        to vector of shape ((n_cells^2)/2)-n_cells.
+    .post : np.array
+        flattened vector of normalized, unique cell-cell distances 
+        "post-transformation". upper triangle of cell-cell distance matrix, flattened 
+        to vector of shape ((n_cells^2)/2)-n_cells.
+    .labels : list of str
+        name of pre- and post-transformation spaces for legend (plot_cell_distances, 
+        plot_distributions, plot_cumulative_distributions) or axis labels 
+        (plot_distance_correlation, joint_plot_distance_correlation) as list of two 
+        strings. False to exclude labels.
+
+    Methods
+    -------
+
+    .plot_cell_distances()
+        plots all unique cell-cell distances before and after some transformation
+    .plot_distributions()
+        plots probability distributions for all unique cell-cell distances before and 
+        after some transformation
+    .plot_cumulative_distributions()
+        plots cumulative probability distributions for all unique cell-cell distances 
+        before and after some transformation
+    .plot_distance_correlation()
+        plots correlation of all unique cell-cell distances before and after some 
+        transformation
+    .joint_plot_distance_correlation()
+        plots correlation of all unique cell-cell distances before and after some 
+        transformation. includes marginal plots of each distribution.
     """
 
     def __init__(
         self, pre_norm, post_norm, figsize=(4, 4), labels=["Native", "Latent"]
     ):
         """
-        pre_norm = flattened vector of normalized, unique cell-cell distances "pre-transformation".
-            Upper triangle of cell-cell distance matrix, flattened to vector of shape ((n_cells^2)/2)-n_cells.
-        post_norm = flattened vector of normalized, unique cell-cell distances "post-transformation".
-            Upper triangle of cell-cell distance matrix, flattened to vector of shape ((n_cells^2)/2)-n_cells.
-        figsize = size of resulting axes
-        labels = name of pre- and post-transformation spaces for legend (plot_cell_distances, plot_distributions,
-            plot_cumulative_distributions) or axis labels (plot_distance_correlation, joint_plot_distance_correlation)
-            as list of two strings. False to exclude labels.
+        Initializes SP plot class
+
+        Parameters
+        ----------
+
+        pre_norm : np.array
+            flattened vector of normalized, unique cell-cell distances 
+            "pre-transformation". upper triangle of cell-cell distance matrix, flattened 
+            to vector of shape ((n_cells^2)/2)-n_cells.
+        post_norm : np.array
+            flattened vector of normalized, unique cell-cell distances 
+            "post-transformation". upper triangle of cell-cell distance matrix, flattened 
+            to vector of shape ((n_cells^2)/2)-n_cells.
+        figsize : tuple of float, optional (default=(4,4))
+            the size of the figure object on which data will be plotted
+        labels : list of str, optional (default=["Native","Latent"])
+            name of pre- and post-transformation spaces for legend (plot_cell_distances, 
+            plot_distributions, plot_cumulative_distributions) or axis labels 
+            (plot_distance_correlation, joint_plot_distance_correlation) as list of two 
+            strings. False to exclude labels.
+
+        Returns
+        -------
+
+        Initializes `self.fig` and `self.ax` according to input specs
         """
         self.figsize = figsize
         self.fig, self.ax = plt.subplots(1, figsize=self.figsize)
@@ -613,9 +882,21 @@ class SP_plot:
 
     def plot_cell_distances(self, legend=True, save_to=None):
         """
-        plot all unique cell-cell distances before and after some transformation.
-            legend = display legend on plot
-            save_to = path to .png file to save output, or None
+        Plots all unique cell-cell distances before and after some transformation
+
+        Parameters
+        ----------
+
+        legend : bool, optional (default=True)
+            display legend on plot
+        save_to : str, optional (default=None)
+            path to `.png` file to save output. do not save if None
+
+        Returns
+        -------
+
+        `self.fig`, `self.ax` edited; plot saved to `.png` file if `save_to` is not 
+        None
         """
         plt.plot(self.pre, alpha=0.7, label=self.labels[0], color=self.palette[-1])
         plt.plot(self.post, alpha=0.7, label=self.labels[1], color=self.palette[2])
@@ -632,9 +913,22 @@ class SP_plot:
 
     def plot_distributions(self, legend=True, save_to=None):
         """
-        plot probability distributions for all unique cell-cell distances before and after some transformation.
-            legend = display legend on plot
-            save_to = path to .png file to save output, or None
+        Plots probability distributions for all unique cell-cell distances before and 
+        after some transformation
+
+        Parameters
+        ----------
+
+        legend : bool, optional (default=True)
+            display legend on plot
+        save_to : str, optional (default=None)
+            path to `.png` file to save output. do not save if None
+
+        Returns
+        -------
+
+        `self.fig`, `self.ax` edited; plot saved to `.png` file if `save_to` is not 
+        None
         """
         sns.distplot(
             self.pre, hist=False, kde=True, label=self.labels[0], color=self.palette[-1]
@@ -655,9 +949,22 @@ class SP_plot:
 
     def plot_cumulative_distributions(self, legend=True, save_to=None):
         """
-        plot cumulative probability distributions for all unique cell-cell distances before and after some transformation.
-            legend = display legend on plot
-            save_to = path to .png file to save output, or None
+        Plots cumulative probability distributions for all unique cell-cell distances 
+        before and after some transformation
+
+        Parameters
+        ----------
+
+        legend : bool, optional (default=True)
+            display legend on plot
+        save_to : str, optional (default=None)
+            path to `.png` file to save output. do not save if None
+
+        Returns
+        -------
+
+        `self.fig`, `self.ax` edited; plot saved to `.png` file if `save_to` is not 
+        None
         """
         num_bins = int(len(self.pre) / 100)
         pre_counts, pre_bin_edges = np.histogram(self.pre, bins=num_bins)
@@ -689,8 +996,20 @@ class SP_plot:
 
     def plot_distance_correlation(self, save_to=None):
         """
-        plot correlation of all unique cell-cell distances before and after some transformation.
-            save_to = path to .png file to save output, or None
+        Plots correlation of all unique cell-cell distances before and after some 
+        transformation
+
+        Parameters
+        ----------
+
+        save_to : str, optional (default=None)
+            path to `.png` file to save output. do not save if None
+
+        Returns
+        -------
+
+        `self.fig`, `self.ax` edited; plot saved to `.png` file if `save_to` is not 
+        None
         """
         plt.hist2d(x=self.pre, y=self.post, bins=50, cmap=self.cmap)
         plt.plot(
@@ -710,9 +1029,20 @@ class SP_plot:
 
     def joint_plot_distance_correlation(self, save_to=None):
         """
-        plot correlation of all unique cell-cell distances before and after some transformation.
-        includes marginal plots of each distribution.
-            save_to = path to .png file to save output, or None
+        Plots correlation of all unique cell-cell distances before and after some 
+        transformation. includes marginal plots of each distribution.
+
+        Parameters
+        ----------
+
+        save_to : str, optional (default=None)
+            path to `.png` file to save output. do not save if None
+
+        Returns
+        -------
+
+        `self.fig`, `self.ax` edited; plot saved to `.png` file if `save_to` is not 
+        None
         """
         plt.close()  # close matplotlib figure from __init__() and start over with seaborn.JointGrid()
         self.fig = sns.JointGrid(
@@ -751,149 +1081,6 @@ class SP_plot:
             plt.savefig(fname=save_to, transparent=True, bbox_inches="tight", dpi=1000)
 
 
-def cluster_arrangement(
-    pre_obj,
-    post_obj,
-    clusters,
-    cluster_names=None,
-    figsize=(6, 6),
-    pre_transform="arcsinh",
-    legend=True,
-    ax_labels=["Native", "Latent"],
-):
-    """
-    determine pairwise distance preservation between 3 clusters
-        pre_obj = RNA_counts object
-        post_obj = DR object
-        clusters = list of barcode IDs i.e. ['0','1','2'] to calculate pairwise distances between clusters 0, 1 and 2
-        cluster_names = list of cluster names for labeling i.e. ['Bipolar Cells','Rods','Amacrine Cells'] for clusters
-            0, 1 and 2, respectively
-        figsize = size of output figure to plot
-        pre_transform = apply transformation to pre_obj counts? (None, 'arcsinh', or 'log2')
-        legend = display legend on plot
-        ax_labels = list of two strings for x and y axis labels, respectively. if False, exclude axis labels.
-    """
-    # distance calculations for pre_obj
-    dist_0_1 = pre_obj.barcode_distance_matrix(
-        ranks=[clusters[0], clusters[1]], transform=pre_transform
-    ).flatten()
-    dist_0_2 = pre_obj.barcode_distance_matrix(
-        ranks=[clusters[0], clusters[2]], transform=pre_transform
-    ).flatten()
-    dist_1_2 = pre_obj.barcode_distance_matrix(
-        ranks=[clusters[1], clusters[2]], transform=pre_transform
-    ).flatten()
-    # combine and min-max normalize
-    dist = np.append(np.append(dist_0_1, dist_0_2), dist_1_2)
-    dist -= dist.min()
-    dist /= dist.ptp()
-    # split normalized distances by cluster pair
-    dist_norm_0_1 = dist[: dist_0_1.shape[0]]
-    dist_norm_0_2 = dist[dist_0_1.shape[0] : dist_0_1.shape[0] + dist_0_2.shape[0]]
-    dist_norm_1_2 = dist[dist_0_1.shape[0] + dist_0_2.shape[0] :]
-
-    # distance calculations for post_obj
-    post_0_1 = post_obj.barcode_distance_matrix(
-        ranks=[clusters[0], clusters[1]]
-    ).flatten()
-    post_0_2 = post_obj.barcode_distance_matrix(
-        ranks=[clusters[0], clusters[2]]
-    ).flatten()
-    post_1_2 = post_obj.barcode_distance_matrix(
-        ranks=[clusters[1], clusters[2]]
-    ).flatten()
-    # combine and min-max normalize
-    post = np.append(np.append(post_0_1, post_0_2), post_1_2)
-    post -= post.min()
-    post /= post.ptp()
-    # split normalized distances by cluster pair
-    post_norm_0_1 = post[: post_0_1.shape[0]]
-    post_norm_0_2 = post[post_0_1.shape[0] : post_0_1.shape[0] + post_0_2.shape[0]]
-    post_norm_1_2 = post[post_0_1.shape[0] + post_0_2.shape[0] :]
-
-    # calculate EMD and Pearson correlation stats
-    EMD = [
-        wasserstein_1d(dist_norm_0_1, post_norm_0_1),
-        wasserstein_1d(dist_norm_0_2, post_norm_0_2),
-        wasserstein_1d(dist_norm_1_2, post_norm_1_2),
-    ]
-    corr_stats = [
-        pearsonr(x=dist_0_1, y=post_0_1)[0],
-        pearsonr(x=dist_0_2, y=post_0_2)[0],
-        pearsonr(x=dist_1_2, y=post_1_2)[0],
-    ]
-
-    if cluster_names is None:
-        cluster_names = clusters.copy()
-
-    # generate jointplot
-    g = sns.JointGrid(x=dist, y=post, space=0, height=figsize[0])
-    g.plot_joint(plt.hist2d, bins=50, cmap=sns.cubehelix_palette(as_cmap=True))
-    sns.kdeplot(
-        x=dist_norm_0_1,
-        shade=False,
-        bw_method=0.01,
-        ax=g.ax_marg_x,
-        color="darkorange",
-        label=cluster_names[0] + " - " + cluster_names[1],
-        legend=legend,
-    )
-    sns.kdeplot(
-        x=dist_norm_0_2,
-        shade=False,
-        bw_method=0.01,
-        ax=g.ax_marg_x,
-        color="darkgreen",
-        label=cluster_names[0] + " - " + cluster_names[2],
-        legend=legend,
-    )
-    sns.kdeplot(
-        x=dist_norm_1_2,
-        shade=False,
-        bw_method=0.01,
-        ax=g.ax_marg_x,
-        color="darkred",
-        label=cluster_names[1] + " - " + cluster_names[2],
-        legend=legend,
-    )
-    if legend:
-        g.ax_marg_x.legend(loc=(1.01, 0.1))
-
-    sns.kdeplot(
-        y=post_norm_0_1,
-        shade=False,
-        bw_method=0.01,
-        color="darkorange",
-        ax=g.ax_marg_y,
-    )
-    sns.kdeplot(
-        y=post_norm_0_2,
-        shade=False,
-        bw_method=0.01,
-        color="darkgreen",
-        ax=g.ax_marg_y,
-    )
-    sns.kdeplot(
-        y=post_norm_1_2,
-        shade=False,
-        bw_method=0.01,
-        color="darkred",
-        ax=g.ax_marg_y,
-    )
-    g.ax_joint.plot(
-        np.linspace(max(min(dist), min(post)), 1, 100),
-        np.linspace(max(min(dist), min(post)), 1, 100),
-        linestyle="dashed",
-        color=sns.cubehelix_palette()[-1],
-    )  # plot identity line as reference for regression
-    if ax_labels:
-        plt.xlabel(ax_labels[0], fontsize="xx-large", color=sns.cubehelix_palette()[-1])
-        plt.ylabel(ax_labels[1], fontsize="xx-large", color=sns.cubehelix_palette()[2])
-
-    plt.tick_params(labelleft=False, labelbottom=False)
-
-    return corr_stats, EMD
-
 
 def cluster_arrangement_sc(
     adata,
@@ -907,15 +1094,42 @@ def cluster_arrangement_sc(
     ax_labels=["Native", "Latent"],
 ):
     """
-    determine pairwise distance preservation between 3 IDs from adata.obs[obs_col]
-        adata = anndata object to pull dimensionality reduction from
-        pre = matrix to subset as pre-transformation (i.e. adata.X)
-        post = matrix to subset as pre-transformation (i.e. adata.obsm['X_pca'])
-        obs_col = name of column in adata.obs to use as cell IDs (i.e. 'louvain')
-        IDs = list of THREE IDs to compare (i.e. [0,1,2])
-        figsize = size of resulting axes
-        legend = display legend on plot
-        ax_labels = list of two strings for x and y axis labels, respectively. if False, exclude axis labels.
+    Determines pairwise distance preservation between 3 IDs from `adata.obs[obs_col]`
+
+    Parameters
+    ----------
+
+    adata : anndata.AnnData
+        anndata object to pull dimensionality reduction from
+    pre : np.array
+        matrix to subset as pre-transformation (i.e. `adata.X`)
+    post : np.array
+        matrix to subset as pre-transformation (i.e. `adata.obsm["X_pca"]`)
+    obs_col : str
+        name of column in `adata.obs` to use as cell IDs (i.e. "louvain")
+    IDs : list of int (len==3)
+        list of THREE ID indices to compare (i.e. [0,1,2])
+    figsize : tuple of float, optional (default=(4,4))
+        size of resulting figure
+    legend : bool, optional (default=True)
+        display legend on plot
+    ax_labels : list of str (len==2), optional (default=["Native","Latent"])
+        list of two strings for x and y axis labels, respectively. if False, exclude 
+        axis labels.
+
+    Returns
+    -------
+
+    corr_stats : list
+        list of outputs of `pearsonr()` function correlating the three normalized 
+        unique distance vectors in a pairwise fashion
+    EMD : float
+        list of outputs of `wasserstein_1d()` function calculating the Earth Mover's 
+        Distance between the three normalized unique distance vectors in a pairwise 
+        fashion
+
+    Outputs jointplot with scatter of pairwise distance correlations, with marginal 
+    KDE plots showing density of each native and latent distance vector
     """
     # distance calculations for pre_obj
     dist_0_1 = cdist(
