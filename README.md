@@ -12,7 +12,7 @@ High-dimensional data is integral to modern systems biology. Computational metho
 
 Contain utility functions for manipulating datasets and comparing feature-reduced latent spaces.
 
-Documentation available at [KenLauLab.github.io/DR-structure-preservation/](KenLauLab.github.io/DR-structure-preservation/).
+Documentation available at [Ken-Lau-Lab.github.io/DR-structure-preservation/](https://ken-lau-lab.github.io/DR-structure-preservation/).
 
 ##### Tutorials
 
