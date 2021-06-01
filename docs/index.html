@@ -124,7 +124,7 @@ def subset_uns_by_ID(adata, uns_keys, obs_col, IDs):
         list of keys in `adata.uns` to subset. new `adata.uns` keys will be saved with 
         ID appended to name (i.e. `adata.uns[&#34;knn&#34;]` -&gt; `adata.uns[&#34;knn_ID1&#34;]`)
     obs_col : str
-        name of column in `adata.obs` to use as cell IDs (i.e. &#34;louvain&#34;)
+        name of column in `adata.obs` to use as cell IDs (i.e. &#34;leiden&#34;)
     IDs : list of str
         list of IDs to include in subset
 
@@ -146,7 +146,7 @@ def subset_uns_by_ID(adata, uns_keys, obs_col, IDs):
         ] = tmp  # save new .uns key by appending IDs to original key name
 
 
-def find_centroids(adata, use_rep, obs_col=&#34;louvain&#34;):
+def find_centroids(adata, use_rep, obs_col=&#34;leiden&#34;):
     &#34;&#34;&#34;
     Finds cluster centroids
 
@@ -158,7 +158,7 @@ def find_centroids(adata, use_rep, obs_col=&#34;louvain&#34;):
     use_rep : str
         &#34;X&#34; or `adata.obsm` key containing space to calculate centroids in 
         (i.e. &#34;X_pca&#34;)
-    obs_col &#34;str, optional (default=&#34;louvain&#34;)
+    obs_col &#34;str, optional (default=&#34;leiden&#34;)
         `adata.obs` column name containing cluster IDs
 
     Returns
@@ -289,7 +289,7 @@ class DR_plot:
             array containing variables in columns and observations in rows
         color : list
             list of length `nrow(data)` to determine how points should be colored (ie. 
-            `adata.obs[&#34;louvain&#34;].values` to color by &#34;louvain&#34; cluster categories)
+            `adata.obs[&#34;leiden&#34;].values` to color by &#34;leiden&#34; cluster categories)
         pt_size : float, optional (default=75)
             size of points in plot
         legend : str {&#34;full&#34;,&#34;brief&#34;}, optional (default=None)
@@ -361,15 +361,15 @@ class DR_plot:
         clu_names = adata.obs[obs_col].unique().astype(str)
 
         # use existing scanpy colors, if applicable
-        if obs_col == &#34;leiden&#34;:
+        if obs_col == &#34;leiden&#34; and &#34;leiden_colors&#34; in adata.uns.keys():
             colors = [
                 adata.uns[&#34;leiden_colors&#34;][x]
                 for x in adata.obs.leiden.unique().astype(int)
             ]
-        elif obs_col == &#34;louvain&#34;:
+        elif obs_col == &#34;louvain&#34; and &#34;louvain_colors&#34; in adata.uns.keys():
             colors = [
                 adata.uns[&#34;louvain_colors&#34;][x]
-                for x in adata.obs.leiden.unique().astype(int)
+                for x in adata.obs.louvain.unique().astype(int)
             ]
         # otherwise, get new color mapping from obs_col using self.cmap
         else:
@@ -464,15 +464,15 @@ class DR_plot:
         &#34;&#34;&#34;
         clu_names = adata.obs[obs_col].unique().astype(str)
         # use existing scanpy colors, if applicable
-        if obs_col == &#34;leiden&#34;:
+        if obs_col == &#34;leiden&#34; and &#34;leiden_colors&#34; in adata.uns.keys():
             colors = [
                 adata.uns[&#34;leiden_colors&#34;][x]
                 for x in adata.obs.leiden.unique().astype(int)
             ]
-        elif obs_col == &#34;louvain&#34;:
+        elif obs_col == &#34;louvain&#34; and &#34;louvain_colors&#34; in adata.uns.keys():
             colors = [
                 adata.uns[&#34;louvain_colors&#34;][x]
-                for x in adata.obs.leiden.unique().astype(int)
+                for x in adata.obs.louvain.unique().astype(int)
             ]
         # otherwise, get new color mapping from obs_col using self.cmap
         else:
@@ -1717,7 +1717,7 @@ between the two normalized unique distance vectors</dd>
 </details>
 </dd>
 <dt id="fcc_utils.find_centroids"><code class="name flex">
-<span>def <span class="ident">find_centroids</span></span>(<span>adata, use_rep, obs_col='louvain')</span>
+<span>def <span class="ident">find_centroids</span></span>(<span>adata, use_rep, obs_col='leiden')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Finds cluster centroids</p>
@@ -1729,7 +1729,7 @@ between the two normalized unique distance vectors</dd>
 <dd>"X" or <code>adata.obsm</code> key containing space to calculate centroids in
 (i.e. "X_pca")</dd>
 </dl>
-<p>obs_col "str, optional (default="louvain")
+<p>obs_col "str, optional (default="leiden")
 <code>adata.obs</code> column name containing cluster IDs</p>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -1744,7 +1744,7 @@ between the two normalized unique distance vectors</dd>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def find_centroids(adata, use_rep, obs_col=&#34;louvain&#34;):
+<pre><code class="python">def find_centroids(adata, use_rep, obs_col=&#34;leiden&#34;):
     &#34;&#34;&#34;
     Finds cluster centroids
 
@@ -1756,7 +1756,7 @@ between the two normalized unique distance vectors</dd>
     use_rep : str
         &#34;X&#34; or `adata.obsm` key containing space to calculate centroids in 
         (i.e. &#34;X_pca&#34;)
-    obs_col &#34;str, optional (default=&#34;louvain&#34;)
+    obs_col &#34;str, optional (default=&#34;leiden&#34;)
         `adata.obs` column name containing cluster IDs
 
     Returns
@@ -2107,7 +2107,7 @@ IDs defined in <code>adata.obs</code></p>
 <dd>list of keys in <code>adata.uns</code> to subset. new <code>adata.uns</code> keys will be saved with
 ID appended to name (i.e. <code>adata.uns["knn"]</code> -&gt; <code>adata.uns["knn_ID1"]</code>)</dd>
 <dt><strong><code>obs_col</code></strong> :&ensp;<code>str</code></dt>
-<dd>name of column in <code>adata.obs</code> to use as cell IDs (i.e. "louvain")</dd>
+<dd>name of column in <code>adata.obs</code> to use as cell IDs (i.e. "leiden")</dd>
 <dt><strong><code>IDs</code></strong> :&ensp;<code>list</code> of <code>str</code></dt>
 <dd>list of IDs to include in subset</dd>
 </dl>
@@ -2131,7 +2131,7 @@ ID appended to name (i.e. <code>adata.uns["knn"]</code> -&gt; <code>adata.uns["k
         list of keys in `adata.uns` to subset. new `adata.uns` keys will be saved with 
         ID appended to name (i.e. `adata.uns[&#34;knn&#34;]` -&gt; `adata.uns[&#34;knn_ID1&#34;]`)
     obs_col : str
-        name of column in `adata.obs` to use as cell IDs (i.e. &#34;louvain&#34;)
+        name of column in `adata.obs` to use as cell IDs (i.e. &#34;leiden&#34;)
     IDs : list of str
         list of IDs to include in subset
 
@@ -2286,7 +2286,7 @@ object</p>
             array containing variables in columns and observations in rows
         color : list
             list of length `nrow(data)` to determine how points should be colored (ie. 
-            `adata.obs[&#34;louvain&#34;].values` to color by &#34;louvain&#34; cluster categories)
+            `adata.obs[&#34;leiden&#34;].values` to color by &#34;leiden&#34; cluster categories)
         pt_size : float, optional (default=75)
             size of points in plot
         legend : str {&#34;full&#34;,&#34;brief&#34;}, optional (default=None)
@@ -2358,15 +2358,15 @@ object</p>
         clu_names = adata.obs[obs_col].unique().astype(str)
 
         # use existing scanpy colors, if applicable
-        if obs_col == &#34;leiden&#34;:
+        if obs_col == &#34;leiden&#34; and &#34;leiden_colors&#34; in adata.uns.keys():
             colors = [
                 adata.uns[&#34;leiden_colors&#34;][x]
                 for x in adata.obs.leiden.unique().astype(int)
             ]
-        elif obs_col == &#34;louvain&#34;:
+        elif obs_col == &#34;louvain&#34; and &#34;louvain_colors&#34; in adata.uns.keys():
             colors = [
                 adata.uns[&#34;louvain_colors&#34;][x]
-                for x in adata.obs.leiden.unique().astype(int)
+                for x in adata.obs.louvain.unique().astype(int)
             ]
         # otherwise, get new color mapping from obs_col using self.cmap
         else:
@@ -2461,15 +2461,15 @@ object</p>
         &#34;&#34;&#34;
         clu_names = adata.obs[obs_col].unique().astype(str)
         # use existing scanpy colors, if applicable
-        if obs_col == &#34;leiden&#34;:
+        if obs_col == &#34;leiden&#34; and &#34;leiden_colors&#34; in adata.uns.keys():
             colors = [
                 adata.uns[&#34;leiden_colors&#34;][x]
                 for x in adata.obs.leiden.unique().astype(int)
             ]
-        elif obs_col == &#34;louvain&#34;:
+        elif obs_col == &#34;louvain&#34; and &#34;louvain_colors&#34; in adata.uns.keys():
             colors = [
                 adata.uns[&#34;louvain_colors&#34;][x]
-                for x in adata.obs.leiden.unique().astype(int)
+                for x in adata.obs.louvain.unique().astype(int)
             ]
         # otherwise, get new color mapping from obs_col using self.cmap
         else:
@@ -2537,7 +2537,7 @@ arrows and labels</p>
 <dd>array containing variables in columns and observations in rows</dd>
 <dt><strong><code>color</code></strong> :&ensp;<code>list</code></dt>
 <dd>list of length <code>nrow(data)</code> to determine how points should be colored (ie.
-<code>adata.obs["louvain"].values</code> to color by "louvain" cluster categories)</dd>
+<code>adata.obs["leiden"].values</code> to color by "leiden" cluster categories)</dd>
 <dt><strong><code>pt_size</code></strong> :&ensp;<code>float</code>, optional <code>(default=75)</code></dt>
 <dd>size of points in plot</dd>
 <dt><strong><code>legend</code></strong> :&ensp;<code>str {"full","brief"}</code>, optional <code>(default=None)</code></dt>
@@ -2567,7 +2567,7 @@ arrows and labels</p>
         array containing variables in columns and observations in rows
     color : list
         list of length `nrow(data)` to determine how points should be colored (ie. 
-        `adata.obs[&#34;louvain&#34;].values` to color by &#34;louvain&#34; cluster categories)
+        `adata.obs[&#34;leiden&#34;].values` to color by &#34;leiden&#34; cluster categories)
     pt_size : float, optional (default=75)
         size of points in plot
     legend : str {&#34;full&#34;,&#34;brief&#34;}, optional (default=None)
@@ -2672,15 +2672,15 @@ categorical colors (i.e. "leiden" or "louvain") and cute arrows and labels</p>
     clu_names = adata.obs[obs_col].unique().astype(str)
 
     # use existing scanpy colors, if applicable
-    if obs_col == &#34;leiden&#34;:
+    if obs_col == &#34;leiden&#34; and &#34;leiden_colors&#34; in adata.uns.keys():
         colors = [
             adata.uns[&#34;leiden_colors&#34;][x]
             for x in adata.obs.leiden.unique().astype(int)
         ]
-    elif obs_col == &#34;louvain&#34;:
+    elif obs_col == &#34;louvain&#34; and &#34;louvain_colors&#34; in adata.uns.keys():
         colors = [
             adata.uns[&#34;louvain_colors&#34;][x]
-            for x in adata.obs.leiden.unique().astype(int)
+            for x in adata.obs.louvain.unique().astype(int)
         ]
     # otherwise, get new color mapping from obs_col using self.cmap
     else:
@@ -2815,15 +2815,15 @@ the edges to show this.</dd>
     &#34;&#34;&#34;
     clu_names = adata.obs[obs_col].unique().astype(str)
     # use existing scanpy colors, if applicable
-    if obs_col == &#34;leiden&#34;:
+    if obs_col == &#34;leiden&#34; and &#34;leiden_colors&#34; in adata.uns.keys():
         colors = [
             adata.uns[&#34;leiden_colors&#34;][x]
             for x in adata.obs.leiden.unique().astype(int)
         ]
-    elif obs_col == &#34;louvain&#34;:
+    elif obs_col == &#34;louvain&#34; and &#34;louvain_colors&#34; in adata.uns.keys():
         colors = [
             adata.uns[&#34;louvain_colors&#34;][x]
-            for x in adata.obs.leiden.unique().astype(int)
+            for x in adata.obs.louvain.unique().astype(int)
         ]
     # otherwise, get new color mapping from obs_col using self.cmap
     else:
